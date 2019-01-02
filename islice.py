@@ -2,34 +2,33 @@
 
 """
 islice mixin -- makes an easy to access slice-style iterator
-
 """
-
-
-class slice_list(list):
-
-    @property
-    def islice(self):
-        return ISlice(self)
-
-
-class islice_mixin:
-    @property
-    def islice(self):
-        return ISlice(self)
-
 
 class ISlice:
     """
-    mixin that adds an iterable acces with slice semantics
+    mixin that adds an iterator with slice semantics
     """
+    @property
+    def islice(self):
+        return SliceIterator(self)
 
+
+class SliceIterator:
     def __init__(self, seq):
         self.seq = seq
+        self.start = 0
+        self.stop = len(seq)
+        self.stride = 1
+        self.current = -1
 
     def __iter__(self):
-        self.current = self.start - self.stride
         return self
+
+    # def __repr__(self):
+    #     return f"SliceIterator({self.seq!r})"
+
+    def __str__(self):
+        return f"SliceIterator({self.seq!s})"
 
     def __next__(self):
         print("in next")
@@ -46,4 +45,6 @@ class ISlice:
             raise TypeError(".islice only works with single slices")
         self.start, self.stop, self.stride = slc.indices(len(self.seq))
         print(self.start, self.stop, self.stride)
+        self.current = self.start - self.stride
         return self
+

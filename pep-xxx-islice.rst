@@ -21,13 +21,167 @@ Rationale
 
 For legacy and performance reasons, the slicing a sequence creates a copy -- or new sequence -- with the contents of the slice. This is so ingrained into Python that using a single colon slice: ``[:]`` is considered Pythonic shorthand for copying a list.  However, sometimes there is a need to iterate through a subset of a sequence.  The slicing syntax is very handy for selecting part of a sequence, but making a complete copy only to iterate through it is a waste of resources.
 
-to create a slice of a sequence in order
+This use case has been addressed with the ` ``itertools.islice`` <https://docs.python.org/3/library/itertools.html#itertools.islice>`_ utility. However, while most of the functionality is there, ``itertools.islice`` has a number of disadvantages:
+
+ * It must be imported to be used:
+
+ * It is substantially more verbose than slicing syntax
+
+ * The API must be learned -- though similar to slicing, it's not quite the same and must be studied.
+
+ * It cannot use negative indexes -- due to its support for general iterables without a length.
+
+Adding a slicing iterator for the sequence protocol could address all these issues, providing a compact, familiar and performant way to iterate through a subset of a list.
+
+Examples
+--------
+
+The first N elements in a sequence:
+'''''''''''''''''''''''''''''''''''
+
+Using a slice::
+
+    for item in a_sequence[:N]:
+        do_something(item)
+
+Compact, simple and clear, but an unnecessary copy.
+
+Using ``itertools.islice``::
+
+    for item in itertools.islice(a_sequence, N):
+        do_something(item)
+
+A bit verbose
+
+Using the proposed iterator::
+
+    for item in a_sequence.islice[:N]:
+        do_something(item)
+
+Not quite as compact but familiar and more efficient.
+
+Every other element
+'''''''''''''''''''
+
+Using a slice::
+
+    for item in a_sequence[::2]:
+        do_something(item)
+
+Compact, simple and clear, but an unnecessary copy.
+
+Using ``itertools.islice``::
+
+    for item in itertools.islice(a_sequence,  0, None, 2):
+        do_something(item)
+
+A bit verbose and awkward syntax.
+
+Using the proposed iterator::
+
+    for item in a_sequence.islice[::2]:
+        do_something(item)
+
+Not quite as compact but familiar and more efficient.
+
+Looping through three at a time
+'''''''''''''''''''''''''''''
+
+This example from Dave Thomas' `Kata 14 <http://codekata.com/kata/kata14-tom-swift-under-the-milkwood/>`_
+
+Using indexing::
+
+    for i in range(len(words) - 2):
+        first, second, third = words[i], words[i+1], words[i+2]
+        ...
+
+Using slicing::
+
+    for first, second, third = zip(words, words[1:], words[2:]):
+        ...
+
+Compact, pythonic, but making two unnecessary copies.
+
+Using ``itertools.islice``::
+
+    from itertools import islice
+
+    for first, second, third = zip(words,
+                                   islice(words, 1, None),
+                                   islice(words, 2, None)):
+        ...
+
+Verbose and somewhat cryptic -- usually passing None in is the same as not having the argument at all, but in this case, it's required.
+
+Using the proposed iterator::
+
+    for first, second, third = zip(words, words.islice[1:], words.islice[2:]):
+        ...
+
+All but the the last N items:
+'''''''''''''''''''''''''''''
+
+Using a slice::
+
+    for item in a_sequence[:-N]:
+        do_something(item)
+
+Compact, simple and clear, but an unnecessary copy.
+
+Using ``itertools.islice``::
+
+    for item in itertools.islice(a_sequence, len(a_sequence) - N):
+        do_something(item)
+
+A bit verbose, and you have to compute the end point.
+
+Using the proposed iterator::
+
+    for item in a_sequence.islice[:-N]:
+        do_something(item)
+
+Not quite as compact but familiar and more efficient.
+
+Alternatives
+============
+
+A) Put a new function in ``itertools``
+--------------------------------------
+
+A new utility in ``itertools``. It could take a sequence and return an object that could be sliced to return an iterator::
+
+    for item in itertools.sliceiter(sequence)[start:stop:step]
+
+This would essentially be the non-OO version of the proposal -- the same except that rather than being a method of sequences, it would be a function that took a sequence as its argument.
+
+It would have many of the advantages, but would still require an extra import, and be a tiny bit more verbose.
+
+This approach could also add slicing syntax to non-sequence iterators, except that they would not except negative indices.
+
+B) Extend ``itertools.islice`` to support negative indexing
+-----------------------------------------------------------
+
+``itertools.islice`` could accept negative indexes if and only if the iterable passed in has __len__ defined. This could work, as the iterable is passed in at the same time as the indexes, and thus an error could be raised if a non-sequence iterable is used.
+
+C) Add slicing to ``itertools.islice``
+--------------------------------------
+
+``itertools.islice`` currently requires at least two arguments -- it could be adapted to return a "slicing iterator" when only passed a single argument: the sequence to be sliced. This would be essentially the same as (A), but with a merged API.
+
+
+D) Do nothing
+-------------
+
+Of course, the obvious alternative is to do nothing, or put an external function and/or mixin in PyPI.
+
+However the functionality really is pretty minimal, it would likely not get a lot of uptake, unless it were combined with a larger package of extended iterators.
+
+
 
 
 
 How to Use This Template
 ========================
-
 
 
 
